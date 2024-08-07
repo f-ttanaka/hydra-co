@@ -97,6 +97,7 @@ inductive R1 : Rel Hydra where
 -- proposition (R1 h h') holds, in other words, h 0
 -- is just h, without the choppedoff head.
 inductive S1 (n : Nat) : Rel (List Hydra) where
+  -- root から距離1のnodeの枝を切った場合
   | S1_first : ∀ (hs h h'),
       R1 h h' →
       S1 n (h :: hs) (hcons_mult h' (succ n) hs)
@@ -128,32 +129,56 @@ infix:60 "-+->" => roundPlus
 infix:60 "-*->" => roundStar
 
 -- Exercise 2.3
-theorem S0_size_le : ∀ {hs hs'},
+theorem S0_height_dec : ∀ {hs hs'},
   S0 hs hs' → hHeight (node hs) ≥ hHeight (node hs')
   := by
   intro hs hs' H_S0; induction H_S0
   · rename_i hs
     simp [hHeight, hHeight.hlMaxHeight]
   · rename_i h hs hs' H_S0 IH
-    simp [hHeight]
-    simp [hHeight, hHeight.hlMaxHeight]
-    apply Or.intro_right
-    simp [hHeight]
+    unfold hHeight hHeight.hlMaxHeight
+    unfold hHeight at IH
+    apply max_le_max_left (1 + hHeight h) IH
 
-theorem R1_size_le : ∀ {h h'},
+theorem R1_height_dec : ∀ {h h'},
   R1 h h' → hHeight h ≥ hHeight h'
   := by
   intro h h' H_R1
   cases H_R1
   rename_i _ _ H_S0
-  apply S0_size_le H_S0
+  apply S0_height_dec H_S0
 
-theorem S1_size_le : ∀ {n hs hs'},
-  S1 n hs hs' → hSize (node hs) ≥ hSize (node hs')
+theorem mu_height_eq : ∀ {h n hs},
+  hHeight (node (hcons_mult h (succ n) hs)) = hHeight (node (h :: hs))
+  := by
+  intro h n hs; induction n
+  · simp [hcons_mult]
+  · rename_i m IH
+    rw [← IH]
+    simp [hcons_mult, replicate]
+    simp [hHeight, hHeight.hlMaxHeight, hHeight.hlMaxHeight]
+
+theorem S1_height_dec : ∀ {n hs hs'},
+  S1 n hs hs' → hHeight (node hs) ≥ hHeight (node hs')
   := by
   intro n hs hs' H_S1
   induction H_S1
-  . rename_i hs h h' H_R1
+  · rename_i hs h h' H_R1
+    rw [mu_height_eq]
+    unfold hHeight hHeight.hlMaxHeight
+    apply max_le_max_right (hHeight.hlMaxHeight hs)
+    simp
+    apply R1_height_dec H_R1
+  · rename_i h hs hs' H_S1 IH
+    unfold hHeight hHeight.hlMaxHeight
+    unfold hHeight at IH
+    apply max_le_max_left (1 + hHeight h) IH
+
+theorem R2_height_dec : ∀ {n h h'},
+  R2 n h h' → hHeight h ≥ hHeight h'
+  := by
+  intro n h h' H_R2
+  induction H_R2
 
 example : ∀ {h h'},
   h -+-> h' → hHeight h ≥ hHeight h'
